@@ -1,0 +1,17 @@
+public interface ReqInfoRepository extends JpaRepository<ReqInfo, Long> {
+    // 조건에 맞는 데이터만 필터링 (null 혹은 빈 문자열 제외)
+    @Query("SELECT r FROM ReqInfo r " +
+           "JOIN r.reqLayerInfos l " +
+           "WHERE (:mpsDeviceCd IS NULL OR r.mpsDeviceCd = :mpsDeviceCd) " +
+           "AND (:rrsReqId IS NULL OR r.rrsReqId = :rrsReqId) " +
+           "AND (:mpsRevCd IS NULL OR l.mpsRevCd = :mpsRevCd) " +
+           "AND (:mpsLayerCd IS NULL OR l.mpsLayerCd = :mpsLayerCd) " +
+           "AND (:mpsMaskId IS NULL OR l.mpsMaskId = :mpsMaskId)")
+    Page<ReqInfo> findByConditions(
+            @Param("mpsDeviceCd") String mpsDeviceCd,
+            @Param("rrsReqId") String rrsReqId,
+            @Param("mpsRevCd") String mpsRevCd,
+            @Param("mpsLayerCd") String mpsLayerCd,
+            @Param("mpsMaskId") String mpsMaskId,
+            Pageable pageable);
+}
