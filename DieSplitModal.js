@@ -1,4 +1,4 @@
-import { useReducer, useState } from "react";
+import { useReducer, useState, useEffect } from "react";
 import axios from "axios";
 import _ from "lodash";
 
@@ -7,11 +7,23 @@ const initialState = {
   stateMapGrpList: [],
   stateItemList: [],
   stateOrgItemList: [],
+  stateDeviceCd: "",
+  stateLayerCd: "",
 };
 
 // 리듀서 함수 정의
 const reducer = (state, action) => {
   switch (action.type) {
+    case "SET_DEVICE_CD":
+      return {
+        ...state,
+        stateDeviceCd: action.payload, // 문자열로 처리
+      };
+    case "SET_LAYER_CD":
+      return {
+        ...state,
+        stateLayerCd: action.payload, // 문자열로 처리
+      };
     case "ADD_MAP_GRP":
       return {
         ...state,
@@ -27,7 +39,14 @@ const reducer = (state, action) => {
         ...state,
         stateOrgItemList: [...state.stateOrgItemList, action.payload],
       };
-    case "RESET_STATE":
+    case "RESET_DATA_STATE":
+      return {
+        ...state,
+        stateMapGrpList: [],
+        stateItemList: [],
+        stateOrgItemList: [],
+      };
+    case "INIT_STATE":
       return initialState;
     default:
       return state;
@@ -37,12 +56,9 @@ const reducer = (state, action) => {
 // MPS로부터 받아오는 BASE MAP 좌표 리스트
 const getBaseMapItemList = async (deviceCd) => {
   try {
-    const response = await axios.get(
-      `https://your-api-endpoint.com/getBaseMapItemList`,
-      {
-        params: { deviceCd },
-      }
-    );
+    const response = await axios.get(`https://your-api-endpoint.com/getBaseMapItemList`, {
+      params: { deviceCd },
+    });
     return response.data.baseMapItemList;
   } catch (error) {
     console.error("Error fetching base map data:", error);
@@ -53,12 +69,9 @@ const getBaseMapItemList = async (deviceCd) => {
 // RRS에 저장된 DIE SPLIT 리스트
 const getMapGrpList = async (deviceCd, layerCd) => {
   try {
-    const response = await axios.get(
-      `https://your-api-endpoint.com/getMapGrpList`,
-      {
-        params: { mpsDeviceCd: deviceCd, mpsLayerCd: layerCd },
-      }
-    );
+    const response = await axios.get(`https://your-api-endpoint.com/getMapGrpList`, {
+      params: { mpsDeviceCd: deviceCd, mpsLayerCd: layerCd },
+    });
     return response.data.baseMapItemList;
   } catch (error) {
     console.error("Error fetching base map data:", error);
@@ -82,12 +95,9 @@ const saveMapGrpList = async (deviceCd, layerCd, state) => {
   }
 
   try {
-    const response = await axios.post(
-      `https://your-api-endpoint.com/saveMapGrpList`,
-      {
-        params: params,
-      }
-    );
+    const response = await axios.post(`https://your-api-endpoint.com/saveMapGrpList`, {
+      params: params,
+    });
     return response.data.baseMapItemList;
   } catch (error) {
     console.error("Error saving map group data:", error);
@@ -114,18 +124,20 @@ const parseBaseMapItemList = (baseMapItemList, dispatch) => {
   });
 };
 
-// STATE 리셋
-const resetState = (dispatch, setStateDeviceCd, setStateLayerCd) => {
-  dispatch({ type: "RESET_STATE" });
-  setStateDeviceCd("");
-  setStateLayerCd("");
+// 데이터 RELOAD STATE 리셋
+const resetState = (dispatch) => {
+  dispatch({ type: "RESET_DATA_STATE" });
 };
 
 const MyComponent = ({ deviceCd, layerCd }) => {
   const [state, dispatch] = useReducer(reducer, initialState);
   const [loading, setLoading] = useState(false); // 로딩 상태 추가
-  const [stateDeviceCd, setStateDeviceCd] = useState("");
-  const [stateLayerCd, setStateLayerCd] = useState("");
+
+  // deviceCd와 layerCd 상태 업데이트
+  useEffect(() => {
+    dispatch({ type: "SET_DEVICE_CD", payload: deviceCd });
+    dispatch({ type: "SET_LAYER_CD", payload: layerCd });
+  }, [deviceCd, layerCd]); // deviceCd나 layerCd가 변경되면 실행됨
 
   const fetchData = async () => {
     setLoading(true); // 로딩 시작
@@ -134,7 +146,7 @@ const MyComponent = ({ deviceCd, layerCd }) => {
       const mapGrpList = await getMapGrpList(deviceCd, layerCd);
 
       // 상태 리셋
-      resetState(dispatch, setStateDeviceCd, setStateLayerCd);
+      resetState(dispatch);
 
       if (_.isEmpty(mapGrpList)) {
         // MPS로부터 BASE MAP 좌표 리스트 가져오기
